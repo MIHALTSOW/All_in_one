@@ -2,12 +2,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 import jwt
+from core.config import ALGORITHM, SECRET_KEY
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
 
-from ..core.config import ALGORITHM, SECRET_KEY
 from ..models.authorization_models import TokenData, User, UserInDB
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
