@@ -1,3 +1,15 @@
 {
-  "cSpell.words": ["dotenv"]
+  "cSpell.words": ["autoflush", "dotenv", "pgdata"],
+  "sqltools.connections": [
+    {
+      "previewLimit": 50,
+      "server": "localhost",
+      "port": 5433,
+      "driver": "PostgreSQL",
+      "username": "alex",
+      "password": "123",
+      "name": "fastapi_db",
+      "database": "postgres"
+    }
+  ]
 }
