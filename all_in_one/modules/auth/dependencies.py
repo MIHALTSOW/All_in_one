@@ -1,3 +1,6 @@
+# Тут указываются зависимости нашего проекта. Т.е. будем прописывать необходимую проверку данных. Для дальнейшего использования в представлениях.
+
+
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 

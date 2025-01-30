@@ -12,5 +12,23 @@ services:
     ports:
       - "5433:5432"
 
+  # fastapi:
+  #   build: .
+  #   command: uvicorn main:app --reload --host 0.0.0.0 --port 8000
+  #   volumes:
+  #     - .:/code
+  #   ports:
+  #     - "8000:8000"
+  #   depends_on:
+  #     - fastdb
+  #   environment:
+  #     DATABASE_URL: ${DATABASE_URL}
+  #   networks:
+  #     - app-network
+
+
 volumes:
   pgdata:
+
+# networks:
+#   app-network:

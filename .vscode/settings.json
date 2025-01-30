@@ -1,5 +1,5 @@
 {
-  "cSpell.words": ["autoflush", "dotenv", "pgdata"],
+  "cSpell.words": ["десериализация", "autoflush", "dotenv", "pgdata"],
   "sqltools.connections": [
     {
       "previewLimit": 50,
