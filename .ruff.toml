@@ -1,0 +1,25 @@
+# Включаем правила линтинга
+select = [
+    "E", # Pycodestyle errors
+    "F", # Pyflakes
+    "I", # isort (сортировка импортов)
+    "B", # flake8-bugbear
+    "C", # flake8-comprehensions
+    "W", # Pycodestyle warnings
+]
+
+# Игнорируем конкретные правила
+ignore = [
+    "E203", # Пробел перед двоеточием в срезах
+    "E501", # Длина строки
+]
+
+# Настройка длины строки
+line-length = 88
+
+# Включаем форматирование (как Black)
+format = true
+
+# Отключаем удаление лишних переносов строк
+[format]
+skip_magic_trailing_comma = true
