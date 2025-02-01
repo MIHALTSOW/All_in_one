@@ -15,11 +15,9 @@ ignore = [
 ]
 
 # Настройка длины строки
-line-length = 88
+line-length = 79
 
-# Включаем форматирование (как Black)
-format = true
-
-# Отключаем удаление лишних переносов строк
+# Включаем форматирование (как Black) и настраиваем его
+# Настройки форматирования
 [format]
-skip_magic_trailing_comma = true
+skip-magic-trailing-comma = true  # Отключаем удаление лишних переносов строк
