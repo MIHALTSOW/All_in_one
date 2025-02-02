@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.config import settings
 from ...core.dependencies import get_db
-from .models import TokenData, User
+from .models import User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

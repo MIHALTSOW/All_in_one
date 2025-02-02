@@ -26,9 +26,7 @@ services:
   #   networks:
   #     - app-network
 
-
 volumes:
   pgdata:
-
 # networks:
 #   app-network:

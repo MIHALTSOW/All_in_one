@@ -12,10 +12,10 @@
       "server": "localhost",
       "port": 5433,
       "driver": "PostgreSQL",
+      "name": "fast_db",
+      "database": "fastdb",
       "username": "alex",
-      "password": "123",
-      "name": "fastapi_db",
-      "database": "postgres"
+      "password": "123"
     }
   ]
 }
