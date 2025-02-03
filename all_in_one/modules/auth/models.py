@@ -1,9 +1,14 @@
 # В этом модуле мы можем создавать, как SQLAlchemy модели, так и SQLModel модели. Тут только те модели, которые будут использоваться в БД. Мы их не будем использовать для сериализации и десериализации данных. Лучше сразу использовать SQLAlchemy, так как они дают более широкий функционал, который можно будет в дальнейшем использовать на крупных проектах.
 
 
+import uuid
+from ast import For
 from datetime import datetime
+from uuid import UUID
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy.dialects.postgresql import UUID as SA_UUID
+from sqlalchemy.orm import relationship
 
 from ...core.db import Base
 
@@ -20,3 +25,13 @@ class User(Base):
     )
     disabled = Column(Boolean, default=False)
     hashed_password = Column(String(60), nullable=False)
+
+
+class TokenForRegistrationTelegram(Base):
+    __tablename__ = "telegram_token"
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(String(50), unique=True, nullable=False)
+    registration_token = Column(
+        SA_UUID(as_uuid=True), default=uuid.uuid4, unique=True
+    )
+    created_on = Column(DateTime, default=datetime.utcnow)
