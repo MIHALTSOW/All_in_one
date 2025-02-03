@@ -1,8 +1,26 @@
+import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+
+from all_in_one.modules.utils.telegram_bot import application, run_bot
 
 from .modules.auth.routers import router as auth_router
 
-app = FastAPI(title="All in One")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    bot_task = asyncio.create_task(run_bot())
+
+    yield
+
+    await application.updater.stop()
+    await application.stop()
+    await application.shutdown()
+    await bot_task
+
+
+app = FastAPI(title="All in One", lifespan=lifespan)
 
 
 app.include_router(auth_router)
