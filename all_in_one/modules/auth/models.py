@@ -2,13 +2,10 @@
 
 
 import uuid
-from ast import For
 from datetime import datetime
-from uuid import UUID
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
 from sqlalchemy.dialects.postgresql import UUID as SA_UUID
-from sqlalchemy.orm import relationship
 
 from ...core.db import Base
 

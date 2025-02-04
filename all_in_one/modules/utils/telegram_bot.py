@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from sqlalchemy import select
@@ -56,13 +55,14 @@ async def create_token_for_registration(
 
 async def start(update: Update, context: CallbackContext) -> None:
     try:
-        # Получаем уникальный идентификатор пользователя (chat_id) из объекта update
         chat_id = str(update.message.chat_id)
+
         async with async_session() as db:
             token_info = await create_token_for_registration(
                 update, chat_id=chat_id, db=db
             )
         message = f"http://localhost:5173/registration?key={token_info.registration_token}"
+
         await send_message(chat_id, message)
         await update.message.reply_text(
             "Перейдите по ссылке, чтобы зарегистрироваться на сайте"

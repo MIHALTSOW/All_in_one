@@ -1,9 +1,8 @@
 # Валидация данных при помощи pydantic. Т.е. тут описываются поля и их типы, по которым будет проходить сериализация и десериализация. Тут мы не создаем модели для БД.
 
 from datetime import datetime
-from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class Token(BaseModel):
@@ -26,3 +25,19 @@ class UserWithoutPassword(BaseModel):
 
 class UserSchema(UserWithoutPassword):
     hashed_password: str
+
+
+class UserOutputInfo(BaseModel):
+    success: str
+    access_token: str
+    registration_token: str
+    user_data: UserWithoutPassword
+
+
+class UserRegistration(BaseModel):
+    username: str
+    email: str
+
+
+class CheckStatus(BaseModel):
+    status: bool
