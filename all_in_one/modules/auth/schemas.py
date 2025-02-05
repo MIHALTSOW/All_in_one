@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
 
 
@@ -37,7 +38,18 @@ class UserOutputInfo(BaseModel):
 class UserRegistration(BaseModel):
     username: str
     email: str
+    full_name: str
+    password: str
 
 
 class CheckStatus(BaseModel):
     status: bool
+
+
+class Login(BaseModel):
+    username: str
+    password: str
+
+
+class RegistrationToken(BaseModel):
+    registration_token: str

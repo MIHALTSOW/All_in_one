@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.config import settings
 from ...core.dependencies import get_db
-from .models import User
+from .models import TokenForRegistrationTelegram, User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -53,7 +53,22 @@ def create_access_token(
         expire = datetime.now(timezone.utc) + expires_delta
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp_access": expire})
+    encoded_jwt = jwt.encode(
+        to_encode, key=settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
+    return encoded_jwt
+
+
+def create_refresh_token(
+    data: dict, expires_delta: timedelta | None = None
+) -> str:
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(days=7)
+    to_encode.update({"exp_refresh": expire})
     encoded_jwt = jwt.encode(
         to_encode, key=settings.SECRET_KEY, algorithm=settings.ALGORITHM
     )
@@ -62,7 +77,7 @@ def create_access_token(
 
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),
 ):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -90,3 +105,21 @@ async def get_current_active_user(
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+
+async def check_registration_token(
+    registration_token: str, db: AsyncSession = Depends(get_db)
+):
+    try:
+        search_user = await db.execute(
+            select(TokenForRegistrationTelegram).where(
+                TokenForRegistrationTelegram.registration_token
+                == registration_token
+            )
+        )
+        token_data = search_user.scalar_one_or_none()
+        if not token_data:
+            raise HTTPException(status_code=400, detail="Token not found")
+        return token_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}") from e
