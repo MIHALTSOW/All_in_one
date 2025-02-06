@@ -52,8 +52,22 @@ def create_access_token(
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
-    to_encode.update({"exp_access": expire})
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        )
+    to_encode.update({"exp_access": int(expire.timestamp())})
+    encoded_jwt = jwt.encode(
+        to_encode, key=settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
+    return encoded_jwt
+
+
+def refresh_access_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    )
+    to_encode.update({"exp_access": int(expire.timestamp())})
     encoded_jwt = jwt.encode(
         to_encode, key=settings.SECRET_KEY, algorithm=settings.ALGORITHM
     )
@@ -68,11 +82,44 @@ def create_refresh_token(
         expire = datetime.now(timezone.utc) + expires_delta
     else:
         expire = datetime.now(timezone.utc) + timedelta(days=7)
-    to_encode.update({"exp_refresh": expire})
+    to_encode.update({"exp_refresh": int(expire.timestamp())})
     encoded_jwt = jwt.encode(
         to_encode, key=settings.SECRET_KEY, algorithm=settings.ALGORITHM
     )
     return encoded_jwt
+
+
+def refresh_refresh_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.REFRESH_TOKEN_EXPIRE_DAY
+    )
+    to_encode.update({"exp_refresh": int(expire.timestamp())})
+    encoded_jwt = jwt.encode(
+        to_encode, key=settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
+    return encoded_jwt
+
+
+def verify_refresh_token(refresh_token: str) -> bool:
+    try:
+        jwt.decode(
+            refresh_token,
+            key=settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+            options={"verify_exp": True},
+        )
+        return True
+    except jwt.ExpiredSignatureError as lost_time:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Access token has expired",
+        ) from lost_time
+    except jwt.InvalidTokenError as uncorrect:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid access token",
+        ) from uncorrect
 
 
 async def get_current_user(
@@ -109,17 +156,16 @@ async def get_current_active_user(
 
 async def check_registration_token(
     registration_token: str, db: AsyncSession = Depends(get_db)
-):
-    try:
-        search_user = await db.execute(
-            select(TokenForRegistrationTelegram).where(
-                TokenForRegistrationTelegram.registration_token
-                == registration_token
-            )
+) -> str:
+    search_user = await db.execute(
+        select(TokenForRegistrationTelegram).where(
+            TokenForRegistrationTelegram.registration_token
+            == registration_token
         )
-        token_data = search_user.scalar_one_or_none()
-        if not token_data:
-            raise HTTPException(status_code=400, detail="Token not found")
-        return token_data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}") from e
+    )
+    token_data = search_user.scalar_one_or_none()
+    if not token_data:
+        raise HTTPException(
+            status_code=400, detail="Invalid registration token"
+        )
+    return str(token_data.registration_token)

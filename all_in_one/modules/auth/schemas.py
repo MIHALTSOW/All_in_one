@@ -2,6 +2,7 @@
 
 from datetime import datetime
 
+from fastapi import Cookie
 from pydantic import BaseModel
 
 
@@ -16,12 +17,16 @@ class TokenData(BaseModel):
 
 
 class UserWithoutPassword(BaseModel):
+    id: int
     username: str
     email: str
     full_name: str | None = None
     created_on: datetime
     updated_on: datetime
     disabled: bool | None = False
+
+    class Config:
+        from_attributes = True
 
 
 class UserSchema(UserWithoutPassword):
@@ -53,3 +58,10 @@ class Login(BaseModel):
 
 class RegistrationToken(BaseModel):
     registration_token: str
+
+
+class TokenWithCookie(BaseModel):
+    success: str
+    access_token: str
+    refresh_token: str
+    user_data: UserWithoutPassword
