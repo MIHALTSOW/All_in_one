@@ -2,7 +2,6 @@
 
 from datetime import datetime
 
-from fastapi import Cookie
 from pydantic import BaseModel
 
 

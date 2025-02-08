@@ -51,22 +51,12 @@ def create_access_token(
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
+    elif data is None:
+        return None
     else:
         expire = datetime.now(timezone.utc) + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
-    to_encode.update({"exp_access": int(expire.timestamp())})
-    encoded_jwt = jwt.encode(
-        to_encode, key=settings.SECRET_KEY, algorithm=settings.ALGORITHM
-    )
-    return encoded_jwt
-
-
-def refresh_access_token(data: dict) -> str:
-    to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-    )
     to_encode.update({"exp_access": int(expire.timestamp())})
     encoded_jwt = jwt.encode(
         to_encode, key=settings.SECRET_KEY, algorithm=settings.ALGORITHM
@@ -80,6 +70,8 @@ def create_refresh_token(
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
+    elif data is None:
+        return None
     else:
         expire = datetime.now(timezone.utc) + timedelta(days=7)
     to_encode.update({"exp_refresh": int(expire.timestamp())})
@@ -89,37 +81,23 @@ def create_refresh_token(
     return encoded_jwt
 
 
-def refresh_refresh_token(data: dict) -> str:
-    to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.REFRESH_TOKEN_EXPIRE_DAY
-    )
-    to_encode.update({"exp_refresh": int(expire.timestamp())})
-    encoded_jwt = jwt.encode(
-        to_encode, key=settings.SECRET_KEY, algorithm=settings.ALGORITHM
-    )
-    return encoded_jwt
-
-
-def verify_refresh_token(refresh_token: str) -> bool:
+def decoded_token(token: str) -> dict | None:
     try:
-        jwt.decode(
-            refresh_token,
-            key=settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM],
-            options={"verify_exp": True},
+        decoded_token = jwt.decode(
+            token, key=settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-        return True
-    except jwt.ExpiredSignatureError as lost_time:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Access token has expired",
-        ) from lost_time
-    except jwt.InvalidTokenError as uncorrect:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid access token",
-        ) from uncorrect
+        return decoded_token
+    except jwt.InvalidTokenError:
+        return None
+
+
+def verify_refresh_token(decoded_token: dict | None) -> bool:
+    if decoded_token is None:
+        return False
+    exp_refresh = decoded_token.get("exp_refresh")
+    if datetime.now(timezone.utc).timestamp() > exp_refresh:
+        return False
+    return True
 
 
 async def get_current_user(

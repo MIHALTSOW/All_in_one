@@ -2,9 +2,8 @@
 
 from datetime import timedelta
 
-import jwt
-from fastapi import APIRouter, Body, Cookie, Depends, HTTPException, Request
-from jwt import decode
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
 from all_in_one.modules.auth.dependencies import (
@@ -12,9 +11,8 @@ from all_in_one.modules.auth.dependencies import (
     check_registration_token,
     create_access_token,
     create_refresh_token,
+    decoded_token,
     get_password_hash,
-    refresh_access_token,
-    refresh_refresh_token,
     verify_refresh_token,
 )
 from all_in_one.modules.auth.models import User
@@ -24,7 +22,6 @@ from ...core.dependencies import get_db
 from ..auth.schemas import (
     Login,
     Token,
-    TokenWithCookie,
     UserOutputInfo,
     UserRegistration,
     UserWithoutPassword,
@@ -39,27 +36,27 @@ async def get_token_info(request: Request):
     if not refresh_token:
         raise HTTPException(status_code=400, detail="Refresh token is missing")
 
-    try:
-        dict_from_refresh_token = decode(refresh_token)
-    except jwt.ExpiredSignatureError as time_out:
-        raise HTTPException(
-            status_code=400, detail="Token time out"
-        ) from time_out
-    except jwt.InvalidTokenError as error:
-        raise HTTPException(
-            status_code=400, detail="Invalid refresh token"
-        ) from error
-    if verify_refresh_token(refresh_token=refresh_token):
-        new_access_token = create_access_token(dict_from_refresh_token)
-    else:
-        refresh_token = create_refresh_token(data=dict_from_refresh_token)
-        new_access_token = create_access_token(data=dict_from_refresh_token)
+    decoded_refresh_token = decoded_token(token=refresh_token)
+    token_check = verify_refresh_token(decoded_token=decoded_refresh_token)
 
-    return {
-        "success": "Token refreshed",
-        "access_token": new_access_token,
-        "refresh_token": refresh_token,
-    }
+    if not token_check:
+        new_refresh_token = create_refresh_token(decoded_refresh_token)
+        new_access_token = create_access_token(decoded_refresh_token)
+    else:
+        new_access_token = create_access_token(decoded_refresh_token)
+        new_refresh_token = refresh_token
+
+        response = JSONResponse(
+            content={
+                "success": "Token refreshed",
+                "access_token": new_access_token,
+            }
+        )
+        response.set_cookie(
+            key="refresh_token", value=new_refresh_token, httponly=True
+        )
+
+    return response
 
 
 @router.post("/api/token/", response_model=Token)
