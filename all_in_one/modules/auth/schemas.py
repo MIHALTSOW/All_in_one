@@ -35,7 +35,6 @@ class UserSchema(UserWithoutPassword):
 class UserOutputInfo(BaseModel):
     success: str
     access_token: str
-    registration_token: str
     user_data: UserWithoutPassword
 
 

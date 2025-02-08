@@ -13,9 +13,10 @@ from all_in_one.modules.auth.dependencies import (
     create_refresh_token,
     decoded_token,
     get_password_hash,
+    get_user,
     verify_refresh_token,
 )
-from all_in_one.modules.auth.models import User
+from all_in_one.modules.auth.models import TokenForRegistrationTelegram, User
 
 from ...core.config import settings
 from ...core.dependencies import get_db
@@ -30,8 +31,8 @@ from ..auth.schemas import (
 router = APIRouter()
 
 
-@router.get("/api/token")
-async def get_token_info(request: Request):
+@router.get("/api/token", response_model=UserOutputInfo)
+async def get_token_info(request: Request, db=Depends(get_db)):
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
         raise HTTPException(status_code=400, detail="Refresh token is missing")
@@ -46,15 +47,25 @@ async def get_token_info(request: Request):
         new_access_token = create_access_token(decoded_refresh_token)
         new_refresh_token = refresh_token
 
-        response = JSONResponse(
-            content={
-                "success": "Token refreshed",
-                "access_token": new_access_token,
-            }
+    username = decoded_refresh_token.get("sub")
+
+    if username is None:
+        raise HTTPException(
+            status_code=400, detail="User not found in the token"
         )
-        response.set_cookie(
-            key="refresh_token", value=new_refresh_token, httponly=True
-        )
+
+    user_info = await get_user(db=db, username=username)
+
+    response = JSONResponse(
+        content={
+            "success": "Token refreshed",
+            "access_token": new_access_token,
+            "user_data": UserWithoutPassword.from_orm(user_info),
+        }
+    )
+    response.set_cookie(
+        key="refresh_token", value=new_refresh_token, httponly=True
+    )
 
     return response
 
@@ -105,6 +116,16 @@ async def create_user(
     try:
         await db.commit()
         await db.refresh(new_user)
+        await (
+            db.query(TokenForRegistrationTelegram)
+            .filter(
+                TokenForRegistrationTelegram.registration_token
+                == registration_token
+            )
+            .delete()
+        )
+        await db.commit()
+
     except IntegrityError as err:
         await db.rollback()
         raise HTTPException(
@@ -113,6 +134,5 @@ async def create_user(
     return UserOutputInfo(
         success="Registration successful",
         access_token=create_access_token(data={"sub": user_data.username}),
-        registration_token=registration_token,
         user_data=UserWithoutPassword.from_orm(new_user),
     )
