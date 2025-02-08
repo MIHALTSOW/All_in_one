@@ -39,7 +39,7 @@ async def get_token_info(request: Request):
     decoded_refresh_token = decoded_token(token=refresh_token)
     token_check = verify_refresh_token(decoded_token=decoded_refresh_token)
 
-    if not token_check:
+    if token_check is False:
         new_refresh_token = create_refresh_token(decoded_refresh_token)
         new_access_token = create_access_token(decoded_refresh_token)
     else:

@@ -81,20 +81,22 @@ def create_refresh_token(
     return encoded_jwt
 
 
-def decoded_token(token: str) -> dict | None:
+def decoded_token(token: str) -> dict:
     try:
         decoded_token = jwt.decode(
             token, key=settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         return decoded_token
-    except jwt.InvalidTokenError:
-        return None
+    except jwt.InvalidTokenError as invalid_token:
+        raise HTTPException(
+            status_code=400, detail="Invalid token"
+        ) from invalid_token
 
 
-def verify_refresh_token(decoded_token: dict | None) -> bool:
-    if decoded_token is None:
-        return False
+def verify_refresh_token(decoded_token: dict) -> bool:
     exp_refresh = decoded_token.get("exp_refresh")
+    if exp_refresh is None:
+        return False
     if datetime.now(timezone.utc).timestamp() > exp_refresh:
         return False
     return True
