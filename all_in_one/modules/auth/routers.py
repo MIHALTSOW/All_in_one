@@ -6,6 +6,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from all_in_one.modules.auth.dependencies import (
     authenticate_user,
@@ -66,7 +67,11 @@ async def get_token_info(request: Request, db=Depends(get_db)):
         }
     )
     response.set_cookie(
-        key="refresh_token", value=new_refresh_token, httponly=True
+        key="refresh_token",
+        value=new_refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
     )
 
     return response
@@ -138,3 +143,47 @@ async def create_user(
         access_token=create_access_token(data={"sub": user_data.username}),
         user_data=UserWithoutPassword.from_orm(new_user),
     )
+
+
+@router.post("/api/login/", response_model=UserOutputInfo)
+async def login(user: Login = Body(...), db: AsyncSession = Depends(get_db)):
+    try:
+        await authenticate_user(
+            db=db, username=user.username, password=user.password
+        )
+    except HTTPException as login_error:
+        raise HTTPException(
+            status_code=400, detail="Incorrect username or password"
+        ) from login_error
+
+    user_info = await get_user(username=user.username, db=db)
+
+    if not user_info:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_data = jsonable_encoder(UserWithoutPassword.model_validate(user_info))
+
+    code_token = {
+        "sub": user.username,
+        "key": settings.SECRET_KEY,
+        "algorithms": [settings.ALGORITHM],
+    }
+
+    new_refresh_token = create_refresh_token(data=code_token)
+    new_access_token = create_access_token(data=code_token)
+
+    response = JSONResponse(
+        content={
+            "success": "Login successful",
+            "access_token": new_access_token,
+            "user_data": user_data,
+        }
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+    )
+    return response
