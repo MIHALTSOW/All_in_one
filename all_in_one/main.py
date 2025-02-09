@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from all_in_one.core.cors import get_cors_middleware
 from all_in_one.modules.utils.telegram_bot import application, run_bot
 
 from .modules.auth.routers import router as auth_router
@@ -22,6 +23,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="All in One", lifespan=lifespan)
 
+get_cors_middleware(app)
 
 app.include_router(auth_router)
 
