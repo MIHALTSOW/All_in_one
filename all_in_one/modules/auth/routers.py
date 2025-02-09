@@ -3,6 +3,7 @@
 from datetime import timedelta
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
@@ -31,7 +32,7 @@ from ..auth.schemas import (
 router = APIRouter()
 
 
-@router.get("/api/token", response_model=UserOutputInfo)
+@router.get("/api/token/", response_model=UserOutputInfo)
 async def get_token_info(request: Request, db=Depends(get_db)):
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
@@ -54,13 +55,14 @@ async def get_token_info(request: Request, db=Depends(get_db)):
             status_code=400, detail="User not found in the token"
         )
 
-    user_info = await get_user(db=db, username=username)
+    user_info = await get_user(username=username, db=db)
+    user_data = jsonable_encoder(UserWithoutPassword.model_validate(user_info))
 
     response = JSONResponse(
         content={
             "success": "Token refreshed",
             "access_token": new_access_token,
-            "user_data": UserWithoutPassword.from_orm(user_info),
+            "user_data": user_data,
         }
     )
     response.set_cookie(

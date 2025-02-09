@@ -28,7 +28,7 @@ def get_password_hash(password) -> str:
     return pwd_context.hash(password)
 
 
-async def get_user(db: AsyncSession, username: str) -> User | None:
+async def get_user(username: str, db: AsyncSession) -> User | None:
     result = await db.execute(select(User).where(User.username == username))
     return result.scalar_one_or_none()
 
@@ -119,8 +119,8 @@ async def get_current_user(
         if not username:
             raise credentials_exception
     except (jwt.ExpiredSignatureError, jwt.DecodeError, jwt.InvalidTokenError):
-        raise credentials_exception  # noqa: B904
-    user = await get_user(db, username=username)
+        raise credentials_exception from None
+    user = await get_user(username=username, db=db)
     if user is None:
         raise credentials_exception
     return user
