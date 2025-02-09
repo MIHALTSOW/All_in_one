@@ -12,6 +12,7 @@ from all_in_one.modules.auth.dependencies import (
     authenticate_user,
     check_registration_token,
     create_access_token,
+    create_dict_for_token_user,
     create_refresh_token,
     decoded_token,
     get_password_hash,
@@ -147,27 +148,13 @@ async def create_user(
 
 @router.post("/api/login/", response_model=UserOutputInfo)
 async def login(user: Login = Body(...), db: AsyncSession = Depends(get_db)):
-    try:
-        await authenticate_user(
-            db=db, username=user.username, password=user.password
-        )
-    except HTTPException as login_error:
-        raise HTTPException(
-            status_code=400, detail="Incorrect username or password"
-        ) from login_error
-
+    await authenticate_user(
+        db=db, username=user.username, password=user.password
+    )
     user_info = await get_user(username=user.username, db=db)
-
-    if not user_info:
-        raise HTTPException(status_code=404, detail="User not found")
-
     user_data = jsonable_encoder(UserWithoutPassword.model_validate(user_info))
 
-    code_token = {
-        "sub": user.username,
-        "key": settings.SECRET_KEY,
-        "algorithms": [settings.ALGORITHM],
-    }
+    code_token = create_dict_for_token_user(username=user.username)
 
     new_refresh_token = create_refresh_token(data=code_token)
     new_access_token = create_access_token(data=code_token)

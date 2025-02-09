@@ -30,7 +30,19 @@ def get_password_hash(password) -> str:
 
 async def get_user(username: str, db: AsyncSession) -> User | None:
     result = await db.execute(select(User).where(User.username == username))
-    return result.scalar_one_or_none()
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+def create_dict_for_token_user(username: str) -> dict:
+    code_token = {
+        "sub": username,
+        "key": settings.SECRET_KEY,
+        "algorithms": [settings.ALGORITHM],
+    }
+    return code_token
 
 
 async def authenticate_user(
