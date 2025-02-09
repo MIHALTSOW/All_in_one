@@ -46,7 +46,7 @@ class UserRegistration(BaseModel):
 
 
 class CheckStatus(BaseModel):
-    status: bool
+    status: str
 
 
 class Login(BaseModel):

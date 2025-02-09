@@ -24,6 +24,7 @@ from all_in_one.modules.auth.models import TokenForRegistrationTelegram, User
 from ...core.config import settings
 from ...core.dependencies import get_db
 from ..auth.schemas import (
+    CheckStatus,
     Login,
     Token,
     UserOutputInfo,
@@ -173,4 +174,11 @@ async def login(user: Login = Body(...), db: AsyncSession = Depends(get_db)):
         secure=True,
         samesite="strict",
     )
+    return response
+
+
+@router.post("/api/logout/", response_model=CheckStatus)
+def logout(request: Request):
+    response = JSONResponse(content={"success": "Logout successful"})
+    response.delete_cookie(key="refresh_token")
     return response
