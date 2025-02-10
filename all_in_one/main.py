@@ -23,6 +23,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="All in One", lifespan=lifespan)
 
+
 get_cors_middleware(app)
 
 app.include_router(auth_router)
