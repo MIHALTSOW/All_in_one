@@ -5,6 +5,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,6 +29,7 @@ from ...core.dependencies import get_db
 from ..auth.schemas import (
     CheckStatus,
     Login,
+    Refresh_profile,
     Token,
     UserOutputInfo,
     UserRegistration,
@@ -116,7 +118,7 @@ async def get_access_token(
     description="Чтобы получить доступ к этой ссылке пользователю нужно получить ключ в telegram боте. Далее он получит ссылку на регистрацию. Затем будет проверка данного токена, если все хорошо, то пользователю будет доступна регистрация. Если он заполнит все необходимые поля и завершит регистрацию, то telegram токен будет автоматически удален из системы.",
     response_model=UserOutputInfo,
 )
-async def create_user(
+async def registration(
     user_data: UserRegistration = Body(..., description="User data"),
     registration_token: str = Query(..., description="Registration token"),
     db=Depends(get_db),
@@ -155,6 +157,44 @@ async def create_user(
         access_token=create_access_token(data={"sub": user_data.username}),
         user_data=UserWithoutPassword.from_orm(new_user),
     )
+
+
+@router.put(
+    "/api/refresh-profile/",
+    tags=["OAuth2"],
+    name="Обновление профиля пользователя",
+    description="По тем данным, которые введет пользователь будет проходить обновление полей его профиля. Если пользователь не хочет обновлять какое-либо поле, он просто не указывает его, т.е. вычеркиваем ключ и значение из request body. Все обновленные данные будут сохранены в БД.",
+    response_model=UserWithoutPassword,
+)
+async def refresh_profile(
+    user: User = Depends(get_current_active_user),
+    refresh_field: Refresh_profile = Body(None),
+    db: AsyncSession = Depends(get_db),
+):
+    if refresh_field is None:
+        return UserWithoutPassword.from_orm(user)
+
+    if refresh_field.email:
+        existing_user = await db.execute(
+            select(User).filter(User.email == refresh_field.email)
+        )
+        if existing_user.scalar():
+            raise HTTPException(status_code=400, detail="Email already exists")
+        user.email = refresh_field.email
+
+    if refresh_field.full_name:
+        user.full_name = refresh_field.full_name
+
+    if refresh_field.hashed_password:
+        user.hashed_password = get_password_hash(refresh_field.hashed_password)
+
+    try:
+        await db.commit()
+    except IntegrityError as err:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Uncorrect data") from err
+
+    return UserWithoutPassword.from_orm(user)
 
 
 @router.post(

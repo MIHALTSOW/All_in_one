@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 
 class Token(BaseModel):
@@ -17,7 +17,7 @@ class TokenData(BaseModel):
 class UserWithoutPassword(BaseModel):
     id: int
     username: str
-    email: str
+    email: EmailStr
     full_name: str | None = None
     created_on: datetime
     updated_on: datetime
@@ -39,9 +39,15 @@ class UserOutputInfo(BaseModel):
 
 class UserRegistration(BaseModel):
     username: str
-    email: str
+    email: EmailStr
     full_name: str
     password: str
+
+
+class Refresh_profile(BaseModel):
+    email: EmailStr | None = None
+    full_name: str | None = None
+    hashed_password: str | None = None
 
 
 class CheckStatus(BaseModel):
