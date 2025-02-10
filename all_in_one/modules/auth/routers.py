@@ -1,7 +1,7 @@
 # Эндпоинты. Т.е. тут указывается путь для получения данных из БД. Т.е. тут мы указываем маршруты по которым фронт будет получать нужные данные.
 
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -37,7 +37,13 @@ from ..auth.schemas import (
 router = APIRouter()
 
 
-@router.get("/api/token/", response_model=UserOutputInfo)
+@router.get(
+    "/api/token/",
+    tags=["OAuth2"],
+    name="Обновление токенов в реальном времени",
+    description="По запросу с фронта получаем refresh token, проверяем его на действительность, если надо обновляем и возвращаем новый refresh и access токены, если refresh еще действителен, возвращаем его и дополнительно обновленный access токен, также будет возвращена вся информация по пользователю. Этот запрос нужен для обновления в реальном времени токенов пользователя. Refresh возвращаем в cookies.",
+    response_model=UserOutputInfo,
+)
 async def refresh_token(request: Request, db=Depends(get_db)):
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
@@ -81,7 +87,13 @@ async def refresh_token(request: Request, db=Depends(get_db)):
     return response
 
 
-@router.post("/token", response_model=Token)
+@router.post(
+    "/token",
+    tags=["OAuth2"],
+    name="token for oauth2_scheme",
+    description="Получение токена для корректной работы oauth2_scheme. Нужно для корректной проверки авторизации пользователя на сайте.",
+    response_model=Token,
+)
 async def get_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(), db=Depends(get_db)
 ) -> Token:
@@ -97,21 +109,28 @@ async def get_access_token(
     return Token(access_token=access_token, token_type="bearer")
 
 
-@router.post("/api/registration/", response_model=UserOutputInfo)
+@router.post(
+    "/api/registration/",
+    tags=["OAuth2"],
+    name="Регистрация пользователя на сайте",
+    description="Чтобы получить доступ к этой ссылке пользователю нужно получить ключ в telegram боте. Далее он получит ссылку на регистрацию. Затем будет проверка данного токена, если все хорошо, то пользователю будет доступна регистрация. Если он заполнит все необходимые поля и завершит регистрацию, то telegram токен будет автоматически удален из системы.",
+    response_model=UserOutputInfo,
+)
 async def create_user(
     user_data: UserRegistration = Body(..., description="User data"),
-    registration_token: str = Depends(check_registration_token),
+    registration_token: str = Query(..., description="Registration token"),
     db=Depends(get_db),
 ):
     hash_password = get_password_hash(user_data.password)
 
-    new_user = User(
-        username=user_data.username,
-        email=user_data.email,
-        hashed_password=hash_password,
-        full_name=user_data.full_name,
-    )
-    db.add(new_user)
+    if check_registration_token(registration_token, db):
+        new_user = User(
+            username=user_data.username,
+            email=user_data.email,
+            hashed_password=hash_password,
+            full_name=user_data.full_name,
+        )
+        db.add(new_user)
     try:
         await db.commit()
         await db.refresh(new_user)
@@ -138,7 +157,13 @@ async def create_user(
     )
 
 
-@router.post("/api/login/", response_model=UserOutputInfo)
+@router.post(
+    "/api/login/",
+    tags=["OAuth2"],
+    name="Логин пользователя на сайте",
+    description="Авторизация пользователя на сайте",
+    response_model=UserOutputInfo,
+)
 async def login(user: Login = Body(...), db: AsyncSession = Depends(get_db)):
     await authenticate_user(
         db=db, username=user.username, password=user.password
@@ -168,7 +193,13 @@ async def login(user: Login = Body(...), db: AsyncSession = Depends(get_db)):
     return response
 
 
-@router.post("/api/logout/", response_model=CheckStatus)
+@router.post(
+    "/api/logout/",
+    tags=["OAuth2"],
+    name="Выход пользователя с сайта",
+    description="После выхода пользователя помещаем его токен в черный список, чтобы нельзя было повторно авторизоваться под тем же token. Пользователю придется заново заходить и получать новый токен.",
+    response_model=CheckStatus,
+)
 async def logout(
     request: Request,
     current_user: User = Depends(get_current_active_user),
