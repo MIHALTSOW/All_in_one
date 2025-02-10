@@ -21,6 +21,7 @@ from all_in_one.modules.auth.dependencies import (
     get_password_hash,
     get_user,
     is_token_revoked,
+    verify_password,
     verify_refresh_token,
 )
 from all_in_one.modules.auth.models import TokenForRegistrationTelegram, User
@@ -186,7 +187,15 @@ async def refresh_profile(
         user.full_name = refresh_field.full_name
 
     if refresh_field.hashed_password:
-        user.hashed_password = get_password_hash(refresh_field.hashed_password)
+        if verify_password(
+            refresh_field.hashed_password, user.hashed_password
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="New password must be different from the old one",
+            )
+
+    user.hashed_password = get_password_hash(refresh_field.hashed_password)
 
     try:
         await db.commit()
@@ -256,3 +265,28 @@ async def logout(
         key="refresh_token", httponly=True, secure=True, samesite="strict"
     )
     return response
+
+
+@router.get(
+    "/api/profile/",
+    tags=["OAuth2"],
+    name="Профиль пользователя",
+    description="Получение информации из профиля пользователя",
+    response_model=UserWithoutPassword,
+)
+async def get_profile(user: User = Depends(get_current_active_user)):
+    return UserWithoutPassword.from_orm(user)
+
+
+@router.delete(
+    "/api/delete-account/",
+    tags=["OAuth2"],
+    name="Удаление аккаунта пользователя",
+)
+async def delete_account(
+    user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await db.delete(user)
+    await db.commit()
+    return {"message": "Account deleted successfully"}
