@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.config import settings
 from ...core.dependencies import get_db
-from .models import TokenForRegistrationTelegram, User
+from .models import RevokedToken, TokenForRegistrationTelegram, User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -115,8 +115,7 @@ def verify_refresh_token(decoded_token: dict) -> bool:
 
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
-    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
 ):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -132,14 +131,32 @@ async def get_current_user(
             raise credentials_exception
     except (jwt.ExpiredSignatureError, jwt.DecodeError, jwt.InvalidTokenError):
         raise credentials_exception from None
+    if await is_token_revoked(token, db):
+        raise credentials_exception
     user = await get_user(username=username, db=db)
     if user is None:
         raise credentials_exception
     return user
 
 
+async def is_token_revoked(
+    token: str, db: AsyncSession
+) -> RevokedToken | None:
+    result = await db.execute(
+        select(RevokedToken).where(RevokedToken.token == token)
+    )
+    revoked_token = result.scalars().first()
+
+    if revoked_token is None:
+        new_revoked_token = RevokedToken(token=token)
+        db.add(new_revoked_token)
+        await db.commit()
+
+    return revoked_token
+
+
 async def get_current_active_user(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: User = Depends(get_current_user),
 ):
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")

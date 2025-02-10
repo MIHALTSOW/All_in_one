@@ -16,8 +16,10 @@ from all_in_one.modules.auth.dependencies import (
     create_dict_for_token_user,
     create_refresh_token,
     decoded_token,
+    get_current_active_user,
     get_password_hash,
     get_user,
+    is_token_revoked,
     verify_refresh_token,
 )
 from all_in_one.modules.auth.models import TokenForRegistrationTelegram, User
@@ -79,8 +81,8 @@ async def refresh_token(request: Request, db=Depends(get_db)):
     return response
 
 
-@router.post("/api/token/", response_model=Token)
-async def get_access_and_refresh_token(
+@router.post("/token", response_model=Token)
+async def get_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(), db=Depends(get_db)
 ) -> Token:
     user = await authenticate_user(
@@ -128,6 +130,7 @@ async def create_user(
         raise HTTPException(
             status_code=400, detail="Username or email already exists"
         ) from err
+
     return UserOutputInfo(
         success="Registration successful",
         access_token=create_access_token(data={"sub": user_data.username}),
@@ -166,7 +169,19 @@ async def login(user: Login = Body(...), db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/api/logout/", response_model=CheckStatus)
-def logout(token: str = Depends(oauth2_scheme)):
+async def logout(
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    token = request.headers.get("Authorization")
+
+    if token:
+        token_without_bearer = token.replace("Bearer ", "")
+        await is_token_revoked(token=token_without_bearer, db=db)
+
     response = JSONResponse(content={"success": "Logout successful"})
-    response.delete_cookie(key="refresh_token")
+    response.delete_cookie(
+        key="refresh_token", httponly=True, secure=True, samesite="strict"
+    )
     return response

@@ -32,3 +32,10 @@ class TokenForRegistrationTelegram(Base):
         SA_UUID(as_uuid=True), default=uuid.uuid4, unique=True
     )
     created_on = Column(DateTime, default=datetime.utcnow)
+
+
+class RevokedToken(Base):
+    __tablename__ = "revoked_tokens"
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String, unique=True, nullable=False)
+    revoked_at = Column(DateTime, default=datetime.utcnow)
