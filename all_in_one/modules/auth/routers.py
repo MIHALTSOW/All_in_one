@@ -9,7 +9,6 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from all_in_one.core.security import oauth2_scheme
 from all_in_one.modules.auth.dependencies import (
     authenticate_user,
     check_registration_token,

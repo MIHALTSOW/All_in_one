@@ -1,14 +1,22 @@
 from datetime import datetime
-from typing import Optional
 
-from sqlmodel import Field, SQLModel
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy.orm import relationship
+
+from all_in_one.core.db import Base
+from all_in_one.modules.content.utils import CategoryEnum
 
 
-class PhotoVideo(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    title: str = Field(default=None, max_length=100)
-    category: str = Field(default=None)
-    photo_video_url: Optional[str] = Field(default=None, max_length=255)
-    created_at: str = Field(default_factory=datetime.utcnow)
-    updated_at: str = Field(default_factory=datetime.utcnow)
-    likes: int = Field(default=None, ge=0)
+class Media(Base):
+    __tablename__ = "media"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(100), nullable=False, index=True)
+    category = Column(Enum(CategoryEnum), nullable=False)
+    photo_video_url = Column(String(1024), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_on = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user = relationship("User", back_populates="media")
+    likes = relationship("Likes", back_populates="media")

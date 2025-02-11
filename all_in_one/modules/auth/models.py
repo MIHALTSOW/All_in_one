@@ -6,6 +6,7 @@ from datetime import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, Integer, String
 from sqlalchemy.dialects.postgresql import UUID as SA_UUID
+from sqlalchemy.orm import relationship
 
 from ...core.db import Base
 
@@ -21,7 +22,9 @@ class User(Base):
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
     disabled = Column(Boolean, default=False)
-    hashed_password = Column(String(60), nullable=False)
+    hashed_password = Column(String(255), nullable=False)
+    media = relationship("Media", back_populates="user")
+    likes = relationship("Likes", back_populates="user")
 
 
 class TokenForRegistrationTelegram(Base):
