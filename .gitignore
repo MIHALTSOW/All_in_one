@@ -178,3 +178,4 @@ fast_db.session.sql
 mypy.ini
 .sh
 /detail/
+/.vscode/
